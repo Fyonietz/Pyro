@@ -9,8 +9,9 @@
 #include <string>
 #include <system_error>
 #include <unordered_map>
+#include <utility>
 
-void init() {
+void init(const std::string &) {
   std::fstream file("CMakeLists.txt");
   if (!file.is_open()) {
     std::cerr << "CMakeLists.txt Should Be Created.";
@@ -29,12 +30,13 @@ void init() {
   for (std::sregex_iterator i = words_begin; i != words_end; ++i) {
     match = *i;
     value = match[1].str();
-    print(value);
+    print("Setting Up Project: " + value);
   }
   std::string create = "project = " + value;
   std::ofstream config("pyro.conf");
 
   config << create;
+  print("Project Setup Successfully");
 }
 std::string parser() {
   std::ifstream config_file("pyro.conf");
@@ -78,7 +80,7 @@ std::string parser() {
 
   return project_name;
 }
-void build() {
+void build(const std::string &) {
   // Starting Building
   int result = 0;
   result = system("cmake -S . -B build");
@@ -96,27 +98,68 @@ void build() {
     std::cerr << "Failed\n";
   }
 }
-void start() {
+
+void start(const std::string &) {
   std::string project_name = std::move(parser());
   std::string project_name_execute = "./" + project_name + "";
   system(project_name_execute.c_str());
 }
-void version() { print("0.1"); }
-int main(int argc, char *argv[]) {
-  std::unordered_map<std::string, void (*)()> command_lists = {
-      {"init", init}, {"build", build}, {"run", start}, {"--version", version}};
-  if (argc > 1) {
-    std::string input = argv[1];
 
-    // Check if command exists in the map
-    if (command_lists.find(input) != command_lists.end()) {
-      command_lists[input](); // Call the corresponding function
+void start_with_argument(const std::string &args) {
+  std::string project_name = std::move(parser());
+  std::string project_name_execute = "./" + project_name + " " + args + "";
+  system(project_name_execute.c_str());
+}
+
+void version(const std::string &) { print("0.1"); }
+
+int main(int argc, char *argv[]) {
+  // Map to store commands and corresponding function pointers
+  std::unordered_map<std::string, void (*)(const std::string &)> command_lists =
+      {{"init", init},
+       {"build", build},
+       {"run", start},
+       {"run -a", start_with_argument},
+       {"--version", version}};
+
+  std::string input;
+  std::vector<std::string> argument_list;
+
+  // Check if there are arguments
+  if (argc > 1) {
+    input = argv[1];
+
+    // Check if the command is "run -a" (we treat it as a separate case)
+    if (input == "run" && argc > 2 && std::string(argv[2]) == "-a") {
+      // Collect all arguments after "-A"
+      for (int i = 3; i < argc; ++i) {
+        argument_list.push_back(argv[i]);
+      }
+
+      // Convert the vector of arguments into a single string
+      std::ostringstream oss;
+      for (size_t i = 0; i < argument_list.size(); ++i) {
+        oss << argument_list[i]; // Add the argument
+        if (i != argument_list.size() - 1) {
+          oss << " "; // Add space between arguments
+        }
+      }
+
+      std::string args = oss.str();
+
+      // Call the corresponding function with arguments
+      command_lists["run -a"](args); // Pass the concatenated arguments
+    } else if (command_lists.find(input) != command_lists.end()) {
+      // If the command is in the map, call the corresponding function
+      command_lists[input](
+          ""); // Empty string for functions like "init", "build", etc.
     } else {
       std::cout << "Unknown command: " << input << std::endl;
     }
   } else {
-    std::cout << "No command provided."
-              << "DIR: " << std::filesystem::current_path() << std::endl;
+    std::cout << "No command provided. DIR: " << std::filesystem::current_path()
+              << std::endl;
   }
+
   return 0;
 }
