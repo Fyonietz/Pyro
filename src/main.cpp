@@ -111,7 +111,7 @@ void start_with_argument(const std::string &args) {
   system(project_name_execute.c_str());
 }
 
-void version(const std::string &) { print("0.1"); }
+void version(const std::string &) { print("Version 0.1"); }
 
 int main(int argc, char *argv[]) {
   // Map to store commands and corresponding function pointers
@@ -157,8 +157,8 @@ int main(int argc, char *argv[]) {
       std::cout << "Unknown command: " << input << std::endl;
     }
   } else {
-    std::cout << "No command provided. DIR: " << std::filesystem::current_path()
-              << std::endl;
+    std::cout << "No command provided.\nWorking DIR:"
+              << std::filesystem::current_path() << std::endl;
   }
 
   return 0;
