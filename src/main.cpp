@@ -1,5 +1,6 @@
 #include "main.hpp"
 #include <cstdlib>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <iterator>
@@ -38,6 +39,7 @@ void init(const std::string &) {
   config << create;
   print("Project Setup Successfully");
 }
+
 std::string parser() {
   std::ifstream config_file("pyro.conf");
   if (!config_file) {
@@ -77,25 +79,53 @@ std::string parser() {
   }
 
   std::string project_name = config["project"];
-
   return project_name;
 }
+
 void build(const std::string &) {
-  // Starting Building
+  // Starting Build
   int result = 0;
   result = system("cmake -S . -B build");
   if (result != 0) {
-    std::cerr << "Failed:CMake Configuration\n";
+    std::cerr << "Failed: CMake Configuration\n";
   }
   result = system("cmake --build build");
   if (result != 0) {
-    std::cerr << "Failed:CMake Build\n";
+    std::cerr << "Failed: CMake Build\n";
   }
   std::string project_name = std::move(parser());
   std::string project_name_execute = "./" + project_name + "";
   result = system(project_name_execute.c_str());
   if (result != 0) {
-    std::cerr << "Failed\n";
+    std::cerr << "Failed to execute binary.\n";
+  }
+}
+
+void release(const std::string &) {
+  // Configure for release build
+  print("Starting Release Build with -O2 Optimization...");
+
+  int result = 0;
+  // Configure with CMake release type (sets -O2 by default)
+  result = system("cmake -S . -B build -DCMAKE_BUILD_TYPE=Release");
+  if (result != 0) {
+    std::cerr << "Failed: CMake Configuration for Release\n";
+    return;
+  }
+
+  // Build the project
+  result = system("cmake --build build --config Release");
+  if (result != 0) {
+    std::cerr << "Failed: CMake Release Build\n";
+    return;
+  }
+
+  // Run the executable after successful build
+  std::string project_name = std::move(parser());
+  std::string project_name_execute = "./" + project_name + "";
+  result = system(project_name_execute.c_str());
+  if (result != 0) {
+    std::cerr << "Execution Failed\n";
   }
 }
 
@@ -116,10 +146,9 @@ void version(const std::string &) { print("Version 0.1"); }
 int main(int argc, char *argv[]) {
   // Map to store commands and corresponding function pointers
   std::unordered_map<std::string, void (*)(const std::string &)> command_lists =
-      {{"init", init},
-       {"build", build},
-       {"run", start},
-       {"run -a", start_with_argument},
+      {{"init", init},        {"build", build},
+       {"release", release}, // ✅ New release command
+       {"run", start},        {"run -a", start_with_argument},
        {"--version", version}};
 
   std::string input;
@@ -129,35 +158,30 @@ int main(int argc, char *argv[]) {
   if (argc > 1) {
     input = argv[1];
 
-    // Check if the command is "run -a" (we treat it as a separate case)
+    // Handle "run -a" case
     if (input == "run" && argc > 2 && std::string(argv[2]) == "-a") {
-      // Collect all arguments after "-A"
       for (int i = 3; i < argc; ++i) {
         argument_list.push_back(argv[i]);
       }
 
-      // Convert the vector of arguments into a single string
       std::ostringstream oss;
       for (size_t i = 0; i < argument_list.size(); ++i) {
-        oss << argument_list[i]; // Add the argument
+        oss << argument_list[i];
         if (i != argument_list.size() - 1) {
-          oss << " "; // Add space between arguments
+          oss << " ";
         }
       }
 
       std::string args = oss.str();
-
-      // Call the corresponding function with arguments
-      command_lists["run -a"](args); // Pass the concatenated arguments
+      command_lists["run -a"](args);
     } else if (command_lists.find(input) != command_lists.end()) {
-      // If the command is in the map, call the corresponding function
-      command_lists[input](
-          ""); // Empty string for functions like "init", "build", etc.
+      // Call matching command
+      command_lists[input]("");
     } else {
       std::cout << "Unknown command: " << input << std::endl;
     }
   } else {
-    std::cout << "No command provided.\nWorking DIR:"
+    std::cout << "No command provided.\nWorking DIR: "
               << std::filesystem::current_path() << std::endl;
   }
 
