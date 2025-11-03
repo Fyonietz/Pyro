@@ -88,16 +88,19 @@ void build(const std::string &) {
   result = system("cmake -S . -B build");
   if (result != 0) {
     std::cerr << "Failed: CMake Configuration\n";
+    return;
   }
   result = system("cmake --build build");
   if (result != 0) {
     std::cerr << "Failed: CMake Build\n";
+    return;
   }
   std::string project_name = std::move(parser());
   std::string project_name_execute = "./" + project_name + "";
   result = system(project_name_execute.c_str());
   if (result != 0) {
     std::cerr << "Failed to execute binary.\n";
+    return;
   }
 }
 
@@ -126,6 +129,7 @@ void release(const std::string &) {
   result = system(project_name_execute.c_str());
   if (result != 0) {
     std::cerr << "Execution Failed\n";
+    return;
   }
 }
 
